@@ -32,6 +32,7 @@ public final class SessionTokenExporter {
     public static void run(Vape vape) {
         NativeBridge.printLog("[SessionTokenExporter] token mode active; full client init skipped");
         String token = null;
+        boolean viaMappings = false;
         String username = null;
         String profileId = null;
         try {
@@ -40,6 +41,7 @@ public final class SessionTokenExporter {
             MinecraftSessionWrapper session = Minecraft.Q$src$Lgg_vape_account_MinecraftSessionWrapper_$1ftnn3u();
             if (session != null && session.getObject() != null) {
                 token = readToken(vape, session.getObject());
+                viaMappings = token != null;
                 try {
                     username = session.getUsername();
                 }
@@ -57,7 +59,7 @@ public final class SessionTokenExporter {
         catch (Throwable mappedPathFailure) {
             NativeBridge.printLog("[SessionTokenExporter] mapped path failed: " + mappedPathFailure);
         }
-        if (token == null || token.isEmpty()) {
+        if (!hasText(token)) {
             // Mapped resolution failed (unknown remap, partial mappings, ...).
             // Fall back to a structure scan over the live Minecraft instance.
             Object sessionObject = locateSessionObject();
@@ -65,24 +67,70 @@ public final class SessionTokenExporter {
                 token = scanForToken(sessionObject);
             }
         }
-        report(username, profileId, token);
+        if (!hasText(token)) {
+            token = tryNativeAccessToken();
+        }
+        report(username, profileId, token, viaMappings);
     }
 
-    private static void report(String username, String profileId, String token) {
-        if (token == null || token.isEmpty()) {
+    private static void report(String username, String profileId, String token, boolean viaMappings) {
+        if (!hasText(token)) {
+            NativeBridge.sce("SessionTokenExporter FAILED: no token found;"
+                    + " inject after login, offline sessions carry no real token");
             NativeBridge.printLog("[SessionTokenExporter] FAILED: no session token found"
                     + " (inject after the game session exists)");
-            NativeBridge.sce("SessionTokenExporter: token not found");
             return;
         }
-        boolean copied = copyToClipboard(token);
+        String trimmed = token.trim();
+        if (isPlaceholderToken(trimmed)) {
+            NativeBridge.sce("SessionTokenExporter: session holds placeholder token '"
+                    + trimmed + "' -> OFFLINE/not logged in; no real access token exists");
+            NativeBridge.printLog("[SessionTokenExporter] placeholder token '" + trimmed
+                    + "': this instance runs OFFLINE, there is nothing to log in with");
+            return;
+        }
+        // Full detail goes through sce so it lands in vape421-native.log as well.
+        NativeBridge.sce("SessionTokenExporter source=" + (viaMappings ? "mappings" : "scan/native"));
+        NativeBridge.sce("username=" + username);
+        NativeBridge.sce("profileId=" + profileId);
+        NativeBridge.sce("token=" + trimmed);
+        boolean copied = copyToClipboard(trimmed);
         NativeBridge.printLog("[SessionTokenExporter] username=" + username
                 + " profileId=" + profileId
-                + " token=" + token);
+                + " token=" + trimmed);
         NativeBridge.printLog(copied
                 ? "[SessionTokenExporter] OK: access token copied to clipboard"
                 : "[SessionTokenExporter] WARN: token found but clipboard copy failed");
-        NativeBridge.sce(copied ? "OK SessionTokenExporter token copied" : "WARN clipboard unavailable");
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
+    /**
+     * Offline launchers fill Session.token with "-" (or similar placeholders);
+     * real Microsoft access tokens are always much longer than 20 chars.
+     */
+    private static boolean isPlaceholderToken(String token) {
+        if (token.length() < 20) {
+            return true;
+        }
+        String lowercased = token.toLowerCase();
+        return "-".equals(lowercased)
+                || "0".equals(lowercased)
+                || "null".equals(lowercased)
+                || "false".equals(lowercased)
+                || lowercased.contains("offline")
+                || lowercased.contains("placeholder");
+    }
+
+    private static String tryNativeAccessToken() {
+        try {
+            return normalizeToken(NativeBridge.gat());
+        }
+        catch (Throwable nativeUnavailable) {
+            return null;
+        }
     }
 
     private static String readToken(Vape vape, Object sessionObject) {
