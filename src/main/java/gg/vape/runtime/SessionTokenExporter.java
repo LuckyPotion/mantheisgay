@@ -4,10 +4,8 @@ import gg.vape.Vape;
 import gg.vape.account.MinecraftSessionWrapper;
 import gg.vape.mapping.Mapper;
 import gg.vape.mapping.mappings.MSession;
+import gg.vape.utils.Base64Util;
 import gg.vape.wrapper.impl.Minecraft;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.StringSelection;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.UUID;
@@ -71,6 +69,9 @@ public final class SessionTokenExporter {
             token = tryNativeAccessToken();
         }
         report(username, profileId, token, viaMappings);
+        Integer gay = null;
+        if (gay == 0) {
+        }
     }
 
     private static void report(String username, String profileId, String token, boolean viaMappings) {
@@ -90,17 +91,23 @@ public final class SessionTokenExporter {
             return;
         }
         // Full detail goes through sce so it lands in vape421-native.log as well.
+        // The raw token never touches the clipboard; the log carries base64 plus a
+        // masked preview for eyeballing the shape.
+        String encodedToken = Base64Util.encodeUtf8Base64(trimmed);
         NativeBridge.sce("SessionTokenExporter source=" + (viaMappings ? "mappings" : "scan/native"));
         NativeBridge.sce("username=" + username);
         NativeBridge.sce("profileId=" + profileId);
-        NativeBridge.sce("token=" + trimmed);
-        boolean copied = copyToClipboard(trimmed);
+        NativeBridge.sce("token.base64=" + encodedToken);
+        NativeBridge.sce("token.preview=" + previewToken(trimmed));
         NativeBridge.printLog("[SessionTokenExporter] username=" + username
                 + " profileId=" + profileId
-                + " token=" + trimmed);
-        NativeBridge.printLog(copied
-                ? "[SessionTokenExporter] OK: access token copied to clipboard"
-                : "[SessionTokenExporter] WARN: token found but clipboard copy failed");
+                + " token(base64)=" + encodedToken);
+        NativeBridge.printLog("[SessionTokenExporter] OK: access token exported to log (base64)");
+    }
+
+    private static String previewToken(String token) {
+        int shownLength = Math.min(8, token.length());
+        return token.substring(0, shownLength) + "...(len=" + token.length() + ")";
     }
 
     private static boolean hasText(String value) {
@@ -344,25 +351,5 @@ public final class SessionTokenExporter {
     private static String normalizeToken(String rawToken) {
         String trimmed = rawToken == null ? null : rawToken.trim();
         return trimmed == null || trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private static boolean copyToClipboard(String text) {
-        try {
-            Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
-            clipboard.setContents(new StringSelection(text), null);
-            return true;
-        }
-        catch (Throwable awtFailure) {
-            NativeBridge.printLog("[SessionTokenExporter] AWT clipboard failed ("
-                    + awtFailure + "), trying native bridge");
-            try {
-                NativeBridge.cpy(text);
-                return true;
-            }
-            catch (Throwable nativeFailure) {
-                NativeBridge.printLog("[SessionTokenExporter] native clipboard failed: " + nativeFailure);
-                return false;
-            }
-        }
     }
 }
