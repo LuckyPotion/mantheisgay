@@ -24,7 +24,7 @@ public class LunarUnlocker extends Mod {
         super("LunarUnlocker", 0x00A8FF, 0, Category.UTILITY, "Unlocks all Lunar Client cosmetics client-side");
 
         this.autoUnlock = new BooleanValue(this, "Auto Unlock", "Automatically unlock when joining a world", true);
-        this.registerValue(this.autoUnlock);
+        this.addValue(this.autoUnlock);
     }
 
     @Override
@@ -38,7 +38,7 @@ public class LunarUnlocker extends Mod {
             Vape.INSTANCE.getNotificationManager().show(
                 "§cLunar Client not detected",
                 "LunarUnlocker requires Lunar Client to be running",
-                NotificationType.ERROR,
+                NotificationType.ALERT,
                 3000L
             );
             this.setEnabled(false);
@@ -79,12 +79,7 @@ public class LunarUnlocker extends Mod {
      * Manually trigger unlock operation
      */
     public void performUnlock() {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc == null || !mc.isNotNull()) {
-            return;
-        }
-
-        EntityPlayerSP player = mc.getThePlayer();
+        EntityPlayerSP player = Minecraft.thePlayer();
         if (player == null || !player.isNotNull()) {
             Vape.INSTANCE.getNotificationManager().show(
                 "§cCannot unlock",
@@ -100,7 +95,7 @@ public class LunarUnlocker extends Mod {
             Vape.INSTANCE.getNotificationManager().show(
                 "§cLunar Client not detected",
                 "Make sure Lunar Client is running",
-                NotificationType.ERROR,
+                NotificationType.ALERT,
                 3000L
             );
             return;
@@ -114,7 +109,7 @@ public class LunarUnlocker extends Mod {
             Vape.INSTANCE.getNotificationManager().show(
                 "§aUnlock successful",
                 result.getMessage(),
-                NotificationType.SUCCESS,
+                NotificationType.INFO,
                 4000L
             );
         } else {
@@ -125,7 +120,7 @@ public class LunarUnlocker extends Mod {
             Vape.INSTANCE.getNotificationManager().show(
                 "§cUnlock failed",
                 message,
-                NotificationType.ERROR,
+                NotificationType.ALERT,
                 3000L
             );
         }
