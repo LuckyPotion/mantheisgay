@@ -74,7 +74,6 @@ public class PublicProfileManager {
     }
 
     public PublicProfileManager() {
-        ApiServices.getInstance().getPublicProfileApi().getMostPopularTags().whenCompleteAsync(this::handlePopularTagsResponse).exceptionally(PublicProfileManager::handlePopularTagsFailure);
     }
 
     public Collection<String> getTags() {

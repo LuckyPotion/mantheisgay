@@ -17,9 +17,9 @@ public final class LocalVapeStore {
     }
 
     public static Path directory() {
-        String home = System.getProperty("user.home");
+        String home = System.getenv("USERPROFILE");
         if (home == null || home.isEmpty()) {
-            home = System.getenv("USERPROFILE");
+            home = System.getProperty("user.home");
         }
         if (home == null || home.isEmpty()) {
             home = ".";

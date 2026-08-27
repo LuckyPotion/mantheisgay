@@ -13,7 +13,7 @@ implements Runnable {
 
     @Override
     public void run() {
-        while (!Vape.INSTANCE.isEnabled()) {
+        while (true) {
             try {
                 Thread.sleep(100L);
             }

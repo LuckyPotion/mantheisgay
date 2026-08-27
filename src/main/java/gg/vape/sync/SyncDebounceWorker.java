@@ -11,7 +11,7 @@ implements Runnable {
 
     @Override
     public void run() {
-        while (!Vape.INSTANCE.isEnabled()) {
+        while (true) {
             this.processPendingSave();
         }
     }
@@ -24,9 +24,6 @@ implements Runnable {
         try {
             SleepUtil.sleep(1000L);
             if (!Vape.INSTANCE.getPublicProfileSettings().autoSave.getEffectiveValue()) {
-                return;
-            }
-            if (!ClientSettings.INSTANCE.isMainGuiStack() && !ClientSettings.INSTANCE.inputEnabled) {
                 return;
             }
             long observedChangeTime = this.lastChangeTime;

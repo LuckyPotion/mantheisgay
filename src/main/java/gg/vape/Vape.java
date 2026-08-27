@@ -334,26 +334,24 @@ public class Vape {
     }
 
     public boolean initAccountInfo() {
-        ApiAccessTokenProvider.getAccessToken();
+        String accessToken = ApiAccessTokenProvider.getAccessToken();
         try {
-            ApiResponse<AccountInfoResponse> response = ApiServices.getInstance().getAccountInfo().join();
-            if (response == null || !response.isSuccessful() || response.getData() == null) {
-                String error = response == null ? "empty response" : response.getError();
-                Vape.logError("Failed to initialize account details1: " + error);
-                return false;
-            }
-            AccountInfo initializedAccount = AccountInfo.fromResponse(response.getData());
-            if (initializedAccount == null) {
-                Vape.logError("Failed to initialize account details1: empty account data");
-                return false;
-            }
-            this.accountInfo = initializedAccount;
-        }
-        catch (CancellationException | CompletionException error) {
-            Vape.logError("Failed to initialize account details2: " + Vape.formatThrowable(error));
+            long userId = Long.parseLong(accessToken.length() > 8 ? accessToken.substring(0, 8) : accessToken, 36);
+            JsonObject mockJson = new JsonObject();
+            mockJson.addProperty("userId", userId);
+            mockJson.addProperty("username", (String)null);
+            mockJson.addProperty("accountCreation", "2024-01-01T00:00:00.000Z");
+            mockJson.addProperty("licensed", true);
+            mockJson.addProperty("registered", false);
+            mockJson.addProperty("profiles", false);
+            mockJson.addProperty("banned", false);
+            AccountInfoResponse mockResponse = AccountInfoResponse.fromJson(mockJson);
+            this.accountInfo = AccountInfo.fromResponse(mockResponse);
+            return true;
+        } catch (Exception e) {
+            Vape.logError("Failed to initialize local account: " + Vape.formatThrowable(e));
             return false;
         }
-        return true;
     }
 
     public boolean isFeatureDisabled() {

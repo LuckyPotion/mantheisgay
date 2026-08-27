@@ -562,33 +562,8 @@ public class OnlineConnectionManager {
         }
         this.initializationStarted = true;
         this.setupListeners();
-        this.setAccountState(OnlineAccountState.CONNECTING);
-        Runnable initializationFailureHandler = this::handleInitializationFailure;
         this.globalSettingsController.load();
-        try {
-            AccountEntitlements accountEntitlements = Vape.INSTANCE.getAccountInfo().getEntitlements();
-            boolean licensed = accountEntitlements.isLicensed();
-            boolean registered = accountEntitlements.isRegistered();
-            boolean banned = accountEntitlements.isBanned();
-            if (banned) {
-                this.setAccountState(OnlineAccountState.BANNED);
-            } else if (registered) {
-                this.setAccountState(OnlineAccountState.REGISTERED);
-                this.settings.initialize();
-                if (this.settings.getAutoLogin().getEffectiveValue().booleanValue()) {
-                    this.connect();
-                } else {
-                    ClientSettings.getFrame(OnlineFriendsFrame.class).getModeToggle().setLeftSelected(false);
-                }
-            } else {
-                this.setAccountState(OnlineAccountState.UNREGISTERED);
-                ClientSettings.getFrame(OnlineFriendsFrame.class).closeRegistrationIfOpen();
-                ClientSettings.getFrame(OnlineFriendsFrame.class).switchToMinecraftFriends();
-            }
-        }
-        catch (Throwable throwable) {
-            initializationFailureHandler.run();
-        }
+        this.setAccountState(OnlineAccountState.UNREGISTERED);
     }
 
     private static Throwable passthroughThrowable(Throwable throwable) {
