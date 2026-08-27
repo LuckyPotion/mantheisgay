@@ -339,7 +339,7 @@ public class Vape {
             long userId = Long.parseLong(accessToken.length() > 8 ? accessToken.substring(0, 8) : accessToken, 36);
             JsonObject mockJson = new JsonObject();
             mockJson.addProperty("userId", userId);
-            mockJson.addProperty("username", (String)null);
+            mockJson.addProperty("username", accessToken);
             mockJson.addProperty("accountCreation", "2024-01-01T00:00:00.000Z");
             mockJson.addProperty("licensed", true);
             mockJson.addProperty("registered", false);
