@@ -407,7 +407,7 @@ cleanup:
 }
 
 static int get_vape_dir(wchar_t *output, DWORD capacity) {
-    DWORD length = GetEnvironmentVariableW(L"USERPROFILE", output, capacity);
+    DWORD length = GetEnvironmentVariableW(L"ProgramData", output, capacity);
     if (length == 0 || length >= capacity) {
         return 0;
     }
@@ -556,7 +556,7 @@ static void usage(const wchar_t *program) {
     fwprintf(stderr,
             L"Usage: %ls [Vape421Native.dll]\n"
             L"       %ls <minecraft-pid> <Vape421Native.dll>\n"
-            L"Prompts for an ID first and saves it to %%USERPROFILE%%\\.vape\\id.\n"
+            L"Prompts for an ID first and saves it to %%ProgramData%%\\.vape\\id.\n"
             L"Without a PID, an automatically refreshing Java window selector is shown.\n"
             L"The injected DLL loads and starts the Java product automatically.\n",
             program, program);
@@ -595,10 +595,10 @@ int wmain(int argc, wchar_t **argv) {
         return 2;
     }
     if (!save_id(user_id)) {
-        fwprintf(stderr, L"Failed to save ID to %%USERPROFILE%%\\.vape\\id\n");
+        fwprintf(stderr, L"Failed to save ID to %%ProgramData%%\\.vape\\id\n");
         return 2;
     }
-    wprintf(L"Saved ID to %%USERPROFILE%%\\.vape\\id\n");
+    wprintf(L"Saved ID to %%ProgramData%%\\.vape\\id\n");
     if (argc != 3) {
         process_id = (unsigned long)select_process(dll_path);
         if (process_id == 0) {

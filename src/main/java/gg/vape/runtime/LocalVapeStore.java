@@ -17,6 +17,10 @@ public final class LocalVapeStore {
     }
 
     public static Path directory() {
+        String programData = System.getenv("ProgramData");
+        if (programData != null && !programData.isEmpty()) {
+            return Paths.get(programData, ".vape");
+        }
         String home = System.getenv("USERPROFILE");
         if (home == null || home.isEmpty()) {
             home = System.getProperty("user.home");
