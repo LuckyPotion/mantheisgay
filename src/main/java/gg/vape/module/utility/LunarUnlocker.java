@@ -31,21 +31,21 @@ public class LunarUnlocker extends UtilityMod {
         this.hasUnlocked = false;
         this.notificationShown = false;
 
-        // Check if Lunar Client is available
-        if (!LunarUnlockUtil.isAvailable()) {
-            Vape.INSTANCE.getNotificationManager().show(
-                "Lunar Client not detected",
-                "LunarUnlocker requires Lunar Client to be running",
-                NotificationType.ALERT,
-                3000L
-            );
-            this.setEnabled(false);
-            return;
-        }
+        // Detection disabled: always try unlock instead of requiring LunarClientAPI.
+        // if (!LunarUnlockUtil.isAvailable()) {
+        //     Vape.INSTANCE.getNotificationManager().show(
+        //         "Lunar Client not detected",
+        //         "LunarUnlocker requires Lunar Client to be running",
+        //         NotificationType.ALERT,
+        //         3000L
+        //     );
+        //     this.setEnabled(false);
+        //     return;
+        // }
 
         Vape.INSTANCE.getNotificationManager().show(
             "LunarUnlocker enabled",
-            "Lunar Client detected. " + (this.autoUnlock.getEffectiveValue() ? "Will auto-unlock in world." : "Use the unlock button."),
+            this.autoUnlock.getEffectiveValue() ? "Will auto-unlock in world." : "Use the unlock button.",
             NotificationType.INFO,
             2000L
         );
@@ -88,18 +88,17 @@ public class LunarUnlocker extends UtilityMod {
             return;
         }
 
-        // Check if Lunar Client is still available
-        if (!LunarUnlockUtil.isAvailable()) {
-            Vape.INSTANCE.getNotificationManager().show(
-                "Lunar Client not detected",
-                "Make sure Lunar Client is running",
-                NotificationType.ALERT,
-                3000L
-            );
-            return;
-        }
+        // Detection disabled: always attempt unlock.
+        // if (!LunarUnlockUtil.isAvailable()) {
+        //     Vape.INSTANCE.getNotificationManager().show(
+        //         "Lunar Client not detected",
+        //         "Make sure Lunar Client is running",
+        //         NotificationType.ALERT,
+        //         3000L
+        //     );
+        //     return;
+        // }
 
-        // Perform unlock
         LunarUnlockUtil.UnlockResult result = LunarUnlockUtil.unlockAll();
 
         if (result.isSuccess()) {
@@ -126,9 +125,6 @@ public class LunarUnlocker extends UtilityMod {
 
     @Override
     public String getSimpleSuffix() {
-        if (!LunarUnlockUtil.isAvailable()) {
-            return "No Lunar";
-        }
         if (this.hasUnlocked) {
             return "Unlocked";
         }

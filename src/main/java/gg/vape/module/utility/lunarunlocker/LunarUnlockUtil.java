@@ -21,9 +21,10 @@ public final class LunarUnlockUtil {
     }
 
     public static UnlockResult unlockAll() {
-        if (!isAvailable()) {
-            return UnlockResult.failure("");
-        }
+        // Detection disabled: skip LunarClientAPI probe and always try unlock.
+        // if (!isAvailable()) {
+        //     return UnlockResult.failure("");
+        // }
 
         Object lunarInstance = findLunarClientSingleton();
         if (lunarInstance == null) {
