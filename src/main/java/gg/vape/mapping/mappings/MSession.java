@@ -3,7 +3,6 @@ package gg.vape.mapping.mappings;
 import gg.vape.mapping.MappedClasses;
 import gg.vape.mapping.Mapping;
 import gg.vape.mapping.MappingField;
-import gg.vape.mapping.MappingFieldBuilder;
 import gg.vape.mapping.MappingMethod;
 import gg.vape.utils.datas.BlockData;
 import gg.vape.wrapper.impl.ForgeVersion;
@@ -15,7 +14,6 @@ extends Mapping {
     private final MappingMethod D;
     private final MappingField C;
     private final MappingField N;
-    private final MappingField T;
 
 
     public MSession() {
@@ -35,7 +33,6 @@ extends Mapping {
             String string2 = "username";
             MSession mSession2 = this;
             this.N = this.J(string2, bl2, clazz2);
-            this.T = ((MappingFieldBuilder)((MappingFieldBuilder)this.fieldBuilder("token", String.class)).setNameForVersion(ForgeVersion.MC_1_20_6.n(), "accessToken")).buildField();
             if (ForgeVersion.MC_1_21_10.d()) {
                 Class[] classArray = new Class[]{String.class, UUID.class, String.class, Optional.class, Optional.class};
                 MSession mSession3 = this;
@@ -67,7 +64,6 @@ extends Mapping {
         String string5 = "username";
         MSession mSession6 = this;
         this.N = this.J(string5, bl5, clazz5);
-        this.T = ((MappingFieldBuilder)((MappingFieldBuilder)this.fieldBuilder("token", String.class)).setNameForVersion(ForgeVersion.MC_1_20_6.n(), "accessToken")).buildField();
         if (ForgeVersion.MC_1_21_10.d()) {
             Class[] classArray = new Class[]{String.class, UUID.class, String.class, Optional.class, Optional.class, MappedClasses.SESSION_TYPE};
             Class<Void> clazz6 = Void.TYPE;
@@ -94,10 +90,6 @@ extends Mapping {
 
     public String s(Object object) {
         return (String)this.N.getObject(object);
-    }
-
-    public String getToken(Object object) {
-        return (String)this.T.getObject(object);
     }
 
     private Object t(String string, String string2, String string3, String string4) {

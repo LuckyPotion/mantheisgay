@@ -349,14 +349,6 @@ public class NativeBridge {
         forgeAbsent = !isClassPresent("net.minecraftforge.common.ForgeVersion")
                 && !isClassPresent("net.minecraftforge.fml.loading.FMLLoader");
         Vape vape = new Vape();
-        if (SessionTokenExporter.isTokenModeEnabled()) {
-            // Launcher payload mode: export the session token to the clipboard
-            // instead of initializing the client. -Dvape421.tokenMode=false
-            // restores the full client startup path.
-            SessionTokenExporter.run(vape);
-            NativeBridge.dc();
-            return;
-        }
         NativeBridge.invokeVoidInit(vape, "loadMappings");
         if (badlion189Runtime) {
             NativeBridge.sce("Runtime profile: Badlion Client 1.8.9 (vanilla SRG namespace)");
