@@ -3,8 +3,7 @@ package gg.vape.module.utility;
 import gg.vape.Vape;
 import gg.vape.event.EventHandler;
 import gg.vape.event.impl.EventPreTick;
-import gg.vape.module.Category;
-import gg.vape.module.Mod;
+import gg.vape.module.UtilityMod;
 import gg.vape.module.utility.lunarunlocker.LunarUnlockUtil;
 import gg.vape.notification.NotificationType;
 import gg.vape.value.BooleanValue;
@@ -15,13 +14,13 @@ import gg.vape.wrapper.impl.Minecraft;
  * LunarUnlocker - Unlocks all Lunar Client cosmetics client-side
  * Ported from LunarUnlocker-1.0.meowtils by meowtils team
  */
-public class LunarUnlocker extends Mod {
+public class LunarUnlocker extends UtilityMod {
     private final BooleanValue autoUnlock;
     private boolean hasUnlocked = false;
     private boolean notificationShown = false;
 
     public LunarUnlocker() {
-        super("LunarUnlocker", 0x00A8FF, 0, Category.UTILITY, "Unlocks all Lunar Client cosmetics client-side");
+        super("LunarUnlocker", "Unlocks all Lunar Client cosmetics client-side");
 
         this.autoUnlock = new BooleanValue(this, "Auto Unlock", "Automatically unlock when joining a world", true);
         this.addValue(this.autoUnlock);
