@@ -563,6 +563,8 @@ public class OnlineConnectionManager {
         this.initializationStarted = true;
         this.setupListeners();
         this.globalSettingsController.load();
+        this.setAccountState(OnlineAccountState.REGISTERED);
+        this.setConnectionState(OnlineConnectionState.ONLINE);
     }
 
     private static Throwable passthroughThrowable(Throwable throwable) {

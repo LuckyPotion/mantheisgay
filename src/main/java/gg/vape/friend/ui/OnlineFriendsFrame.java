@@ -70,7 +70,7 @@ extends SettingsSubpageFrame {
     public OnlineFriendsFrame() {
         super("newfriends", "Friends");
         this.contentPanel = new PanelComponent(104.0, 130.0);
-        this.modeToggle = new OnlineFriendsFrameModeToggleComponent(this, "VAPE FRIENDS", "MINECRAFT FRIENDS", false);
+        this.modeToggle = new OnlineFriendsFrameModeToggleComponent(this, "VAPE FRIENDS", "MINECRAFT FRIENDS", true);
         this.friendManagementPanel = new FriendManagementPanel();
         this.friendRequestsPanel = new FriendRequestsPanel();
         this.addFriendsButton = new IconButtonComponent("add friends@2x", 1.0, new Color(180, 180, 180), Color.WHITE, 13.0, 13.0);
@@ -89,7 +89,6 @@ extends SettingsSubpageFrame {
         this.showContent(this.emptyStatePanel);
         this.addFriendsButton.w("Add Vape friends");
         this.modeToggle.setTooltips("", "");
-        this.modeToggle.setVisible(false);
         this.notificationOverlay = new NotificationToastOverlay(this);
         this.addMouseListener(this.popupOutsideClickListener);
         this.i$src$Lgg_vape_ui_click_frame_FrameToolbarComponent_$gnpgc6().setDefaultIconScale(0.8f);
@@ -98,13 +97,32 @@ extends SettingsSubpageFrame {
     @Override
     public void u() {
         super.u();
-        if (this.activeContentPanel != null) {
-            this.activeContentPanel.setVisible(false);
+        if (Vape.INSTANCE.getOnlineManager() == null) {
+            return;
         }
-        if (!this.q$src$Lgg_vape_ui_click_component_IconButtonComponent_$1bvowkh().V$src$Z$1xhop3l()) {
-            this.q$src$Lgg_vape_ui_click_component_IconButtonComponent_$1bvowkh().setVisible(true);
-        }
+        this.addFriendsButton.setIconResource("add friends@2x");
         this.addFriendsButton.setVisible(false);
+        if (this.modeToggle.isLeftSelected().booleanValue()) {
+            if (Vape.INSTANCE.getOnlineFriendManager().getFriends().size() > 0 || Vape.INSTANCE.getOnlineManager().getPartyManager().getCurrentParty() != null) {
+                this.showContent(this.onlineFriendsListPanel);
+            } else {
+                this.showContent(this.emptyStatePanel);
+            }
+            this.addFriendsButton.setVisible(true);
+            if (this.registrationPopup != null) {
+                this.activeContentPanel.setVisible(false);
+            } else if (this.activeContentPanel != null) {
+                this.activeContentPanel.setVisible(true);
+            }
+        } else {
+            if (this.activeContentPanel != null) {
+                this.activeContentPanel.setVisible(false);
+            }
+            if (!this.q$src$Lgg_vape_ui_click_component_IconButtonComponent_$1bvowkh().V$src$Z$1xhop3l()) {
+                this.q$src$Lgg_vape_ui_click_component_IconButtonComponent_$1bvowkh().setVisible(true);
+            }
+            this.addFriendsButton.setVisible(true);
+        }
     }
 
     public void refreshOnlineData() {
