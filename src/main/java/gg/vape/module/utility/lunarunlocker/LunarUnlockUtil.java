@@ -1,8 +1,19 @@
 package gg.vape.module.utility.lunarunlocker;
 
+import gg.vape.wrapper.impl.Minecraft;
+
+import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * Lunar Client cosmetics unlocker utility
@@ -14,6 +25,8 @@ public final class LunarUnlockUtil {
     private static final String EMOTE_LOGIN = "com.lunarclient.websocket.emote.v1.LoginResponse";
     private static final String BADGE_LOGIN = "com.lunarclient.websocket.badge.v1.LoginResponse";
     private static final String SPRAY_LOGIN = "com.lunarclient.websocket.spray.v1.LoginResponse";
+    private static final String LUNAR_CLIENT_PACKAGE = "com/moonsworth/lunar/client/";
+    private static final String LUNAR_TYPE_PREFIX = "com.moonsworth.lunar";
 
     private static Boolean lunarRuntime = null;
 
@@ -34,7 +47,6 @@ public final class LunarUnlockUtil {
         List<String> unlocked = new ArrayList<>();
         List<String> failed = new ArrayList<>();
 
-        // Try cosmetics v2 with artistTools, fallback to v1 without artistTools
         if (applyUnlock(lunarInstance, COSMETIC_LOGIN_V2, true, true)) {
             unlocked.add("cosmetics (v2)");
         } else if (applyUnlock(lunarInstance, COSMETIC_LOGIN_V1, true, false)) {
@@ -43,21 +55,18 @@ public final class LunarUnlockUtil {
             failed.add("cosmetics");
         }
 
-        // Unlock emotes
         if (applyUnlock(lunarInstance, EMOTE_LOGIN, true, false)) {
             unlocked.add("emotes");
         } else {
             failed.add("emotes");
         }
 
-        // Unlock badges
         if (applyUnlock(lunarInstance, BADGE_LOGIN, true, false)) {
             unlocked.add("badges");
         } else {
             failed.add("badges");
         }
 
-        // Unlock sprays
         if (applyUnlock(lunarInstance, SPRAY_LOGIN, true, false)) {
             unlocked.add("sprays");
         } else {
@@ -65,7 +74,7 @@ public final class LunarUnlockUtil {
         }
 
         if (unlocked.isEmpty()) {
-            return UnlockResult.failure("Failed to unlock: " + String.join(", ", failed));
+            return UnlockResult.failure("Could not apply unlock (" + String.join(", ", failed) + ")");
         }
 
         String message = "Unlocked: " + String.join(", ", unlocked);
@@ -78,7 +87,7 @@ public final class LunarUnlockUtil {
     public static boolean isAvailable() {
         try {
             if (lunarRuntime == null) {
-                lunarRuntime = checkLunarRuntime();
+                lunarRuntime = detectLunarRuntime();
             }
             return Boolean.TRUE.equals(lunarRuntime);
         } catch (Throwable ignored) {
@@ -87,55 +96,210 @@ public final class LunarUnlockUtil {
         }
     }
 
-    private static boolean checkLunarRuntime() {
+    private static boolean detectLunarRuntime() {
         ClassLoader[] loaders = getClassLoaders();
         for (ClassLoader loader : loaders) {
             try {
-                Class.forName("com.lunarclient.bukkitapi.LunarClientAPI", false, loader);
+                Class.forName(COSMETIC_LOGIN_V2, false, loader);
                 return true;
-            } catch (Throwable ignored) {
+            } catch (ClassNotFoundException ignored) {
+                try {
+                    Class.forName(COSMETIC_LOGIN_V1, false, loader);
+                    return true;
+                } catch (ClassNotFoundException ignoredAgain) {
+                }
             }
         }
         return false;
     }
 
     private static Object findLunarClientSingleton() {
-        try {
-            ClassLoader[] loaders = getClassLoaders();
-            for (ClassLoader loader : loaders) {
-                try {
-                    Class<?> bridgeClass = Class.forName("lunar.LunarClient", false, loader);
-                    Method[] methods = bridgeClass.getMethods();
-                    for (Method method : methods) {
-                        if (method.getParameterCount() == 0
-                            && !method.getReturnType().equals(Void.TYPE)
-                            && method.getName().length() <= 3) {
-                            Object instance = method.invoke(null);
-                            if (instance != null) {
-                                return instance;
-                            }
-                        }
-                    }
-                } catch (ClassNotFoundException ignored) {
-                }
+        return findSingletonFromLunarJar();
+    }
+
+    private static Object findSingletonFromLunarJar() {
+        File lunarJar = findLunarJar();
+        if (lunarJar == null || !lunarJar.isFile()) {
+            return null;
+        }
+        for (String className : findTopLevelClientClasses(lunarJar)) {
+            Object instance = singletonFromClass(className);
+            if (instance != null) {
+                return instance;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return null;
     }
 
+    private static File findLunarJar() {
+        Class<?> marker = resolveClassOrNull(COSMETIC_LOGIN_V2);
+        if (marker == null) {
+            marker = resolveClassOrNull(COSMETIC_LOGIN_V1);
+        }
+        if (marker == null) {
+            return null;
+        }
+
+        URL resource = null;
+        ClassLoader loader = marker.getClassLoader();
+        if (loader != null) {
+            resource = loader.getResource(marker.getName().replace('.', '/') + ".class");
+        }
+        if (resource == null) {
+            try {
+                resource = marker.getProtectionDomain().getCodeSource().getLocation();
+            } catch (Exception ignored) {
+            }
+        }
+        return fileFromResourceUrl(resource);
+    }
+
+    private static File fileFromResourceUrl(URL url) {
+        if (url == null) {
+            return null;
+        }
+        try {
+            URL fileUrl = url;
+            if ("jar".equalsIgnoreCase(fileUrl.getProtocol())) {
+                String file = fileUrl.getFile();
+                int separator = file.indexOf('!');
+                if (separator >= 0) {
+                    file = file.substring(0, separator);
+                }
+                fileUrl = new URL(file);
+            }
+            File resolved = new File(fileUrl.toURI());
+            return resolved.isFile() ? resolved : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static List<String> findTopLevelClientClasses(File jarFile) {
+        List<String> classNames = new ArrayList<>();
+        JarFile jar = null;
+        try {
+            jar = new JarFile(jarFile);
+            Enumeration<JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                String name = entries.nextElement().getName();
+                if (!name.startsWith(LUNAR_CLIENT_PACKAGE) || !name.endsWith(".class")) {
+                    continue;
+                }
+                String remainder = name.substring(LUNAR_CLIENT_PACKAGE.length(), name.length() - 6);
+                if (remainder.isEmpty() || remainder.indexOf('/') >= 0 || remainder.indexOf('$') >= 0) {
+                    continue;
+                }
+                classNames.add(name.substring(0, name.length() - 6).replace('/', '.'));
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (jar != null) {
+                try {
+                    jar.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return classNames;
+    }
+
+    private static Object singletonFromClass(String className) {
+        Class<?> type = resolveClassWithMarkerLoader(className);
+        if (type == null) {
+            return null;
+        }
+        for (Method method : type.getDeclaredMethods()) {
+            if (!Modifier.isStatic(method.getModifiers())
+                || method.getParameterCount() != 0
+                || method.getReturnType() != type) {
+                continue;
+            }
+            try {
+                method.setAccessible(true);
+                Object instance = method.invoke(null);
+                if (instance != null) {
+                    return instance;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return readStaticSelfTypedField(type);
+    }
+
+    private static Object readStaticSelfTypedField(Class<?> type) {
+        for (Field field : type.getDeclaredFields()) {
+            if (!Modifier.isStatic(field.getModifiers()) || field.getType() != type) {
+                continue;
+            }
+            try {
+                field.setAccessible(true);
+                return field.get(null);
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    private static Class<?> resolveClassWithMarkerLoader(String className) {
+        Class<?> marker = resolveClassOrNull(COSMETIC_LOGIN_V2);
+        if (marker == null) {
+            marker = resolveClassOrNull(COSMETIC_LOGIN_V1);
+        }
+        if (marker != null && marker.getClassLoader() != null) {
+            try {
+                return Class.forName(className, false, marker.getClassLoader());
+            } catch (ClassNotFoundException ignored) {
+            }
+        }
+        return resolveClassOrNull(className);
+    }
+
+    private static Class<?> resolveClassOrNull(String className) {
+        try {
+            return resolveClass(className, LunarUnlockUtil.class.getClassLoader());
+        } catch (ClassNotFoundException ignored) {
+            return null;
+        }
+    }
+
     private static ClassLoader[] getClassLoaders() {
-        List<ClassLoader> loaders = new ArrayList<>();
+        Set<ClassLoader> loaders = new LinkedHashSet<>();
         ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
         if (contextLoader != null) {
             loaders.add(contextLoader);
         }
-        ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
-        if (systemLoader != null) {
-            loaders.add(systemLoader);
+        ClassLoader selfLoader = LunarUnlockUtil.class.getClassLoader();
+        if (selfLoader != null) {
+            loaders.add(selfLoader);
         }
-        return loaders.toArray(new ClassLoader[0]);
+        try {
+            ClassLoader mcLoader = Class.forName("net.minecraft.client.Minecraft").getClassLoader();
+            if (mcLoader != null) {
+                loaders.add(mcLoader);
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            Object minecraft = Minecraft.i();
+            if (minecraft != null) {
+                ClassLoader mcLoader = minecraft.getClass().getClassLoader();
+                if (mcLoader != null) {
+                    loaders.add(mcLoader);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        Set<ClassLoader> withParents = new LinkedHashSet<>(loaders);
+        for (ClassLoader loader : loaders) {
+            ClassLoader current = loader;
+            while (current != null) {
+                withParents.add(current);
+                current = current.getParent();
+            }
+        }
+        return withParents.toArray(new ClassLoader[0]);
     }
 
     private static Class<?> resolveClass(String className, ClassLoader loader) throws ClassNotFoundException {
@@ -143,9 +307,9 @@ public final class LunarUnlockUtil {
             return Class.forName(className, false, loader);
         } catch (ClassNotFoundException e) {
             ClassLoader[] loaders = getClassLoaders();
-            for (ClassLoader cl : loaders) {
+            for (ClassLoader candidate : loaders) {
                 try {
-                    return Class.forName(className, false, cl);
+                    return Class.forName(className, false, candidate);
                 } catch (ClassNotFoundException ignored) {
                 }
             }
@@ -157,7 +321,6 @@ public final class LunarUnlockUtil {
         try {
             Class<?> responseClass = resolveClass(loginResponseClass, lunarInstance.getClass().getClassLoader());
             Object loginResponse = buildLoginResponse(responseClass, premium, artistTools);
-
             if (invokeLoginHandler(lunarInstance, responseClass, loginResponse)) {
                 return true;
             }
@@ -168,118 +331,127 @@ public final class LunarUnlockUtil {
     }
 
     private static boolean invokeCosmeticManagerDirect(Object lunarInstance, Class<?> responseClass, Object loginResponse) {
-        try {
-            Method[] methods = lunarInstance.getClass().getMethods();
-            for (Method method : methods) {
-                if (method.getParameterCount() == 0 && !method.getReturnType().equals(Void.TYPE)) {
-                    Object managerCandidate = method.invoke(lunarInstance);
-                    if (managerCandidate != null) {
-                        if (invokeHandlerOnTarget(managerCandidate, responseClass, loginResponse)) {
-                            return true;
-                        }
-                    }
-                }
+        Method[] methods = lunarInstance.getClass().getMethods();
+        for (Method method : methods) {
+            if (method.getParameterCount() != 0 || method.getReturnType() == Void.TYPE) {
+                continue;
             }
-        } catch (Exception ignored) {
+            try {
+                Object managerCandidate = method.invoke(lunarInstance);
+                if (managerCandidate != null && invokeHandlerOnTarget(managerCandidate, responseClass, loginResponse)) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+            }
         }
         return false;
     }
 
     private static boolean invokeLoginHandler(Object lunarInstance, Class<?> responseClass, Object loginResponse) {
-        try {
-            Method[] methods = lunarInstance.getClass().getMethods();
-            for (Method method : methods) {
-                if (method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(responseClass)) {
-                    method.invoke(lunarInstance, loginResponse);
+        if (invokeHandlerOnTarget(lunarInstance, responseClass, loginResponse)) {
+            return true;
+        }
+        Method[] methods = lunarInstance.getClass().getMethods();
+        for (Method method : methods) {
+            if (method.getParameterCount() != 0 || method.getReturnType() == Void.TYPE) {
+                continue;
+            }
+            if (!method.getReturnType().getName().startsWith(LUNAR_TYPE_PREFIX)) {
+                continue;
+            }
+            try {
+                Object managerCandidate = method.invoke(lunarInstance);
+                if (managerCandidate != null && invokeHandlerOnTarget(managerCandidate, responseClass, loginResponse)) {
                     return true;
                 }
+            } catch (Exception ignored) {
             }
-        } catch (Exception ignored) {
         }
         return false;
     }
 
     private static boolean invokeHandlerOnTarget(Object target, Class<?> responseClass, Object loginResponse) {
-        try {
-            Method[] methods = target.getClass().getMethods();
-            for (Method method : methods) {
-                if (method.getParameterCount() == 1 && method.getParameterTypes()[0].equals(responseClass)) {
-                    method.invoke(target, loginResponse);
-                    return true;
-                }
+        for (Method method : getAllMethods(target.getClass())) {
+            if (method.getParameterCount() != 1 || method.getReturnType() != Void.TYPE) {
+                continue;
             }
-        } catch (Exception ignored) {
+            if (!method.getParameterTypes()[0].equals(responseClass)) {
+                continue;
+            }
+            try {
+                method.setAccessible(true);
+                method.invoke(target, loginResponse);
+                return true;
+            } catch (Exception ignored) {
+            }
         }
         return false;
     }
 
+    private static List<Method> getAllMethods(Class<?> type) {
+        List<Method> methods = new ArrayList<>();
+        Class<?> current = type;
+        while (current != null) {
+            for (Method method : current.getDeclaredMethods()) {
+                methods.add(method);
+            }
+            current = current.getSuperclass();
+        }
+        return methods;
+    }
+
     private static Object buildLoginResponse(Class<?> responseClass, boolean premium, boolean artistTools) throws Exception {
-        // Call newBuilder() static method to get a builder
         Method newBuilder = responseClass.getMethod("newBuilder");
         Object builder = newBuilder.invoke(null);
 
-        // Set all flags using setBoolean helper
         setBoolean(builder, "setHasAllCosmeticsFlag", premium);
         setBoolean(builder, "setHasAllEmotesFlag", premium);
         setBoolean(builder, "setHasAllBadgesFlag", premium);
         setBoolean(builder, "setHasAllSpraysFlag", premium);
         setBoolean(builder, "setArtistTools", artistTools);
 
-        // For cosmetics v2, add a default outfit
         if (COSMETIC_LOGIN_V2.equals(responseClass.getName())) {
             addDefaultOutfit(builder);
         }
 
-        // Call build() to create the final response
         Method build = builder.getClass().getMethod("build");
         return build.invoke(builder);
     }
 
     private static void addDefaultOutfit(Object builder) {
         try {
-            // Load Outfit class
-            Class<?> outfitClass = Class.forName("com.lunarclient.websocket.cosmetic.v2.Outfit");
+            Class<?> outfitClass = resolveClass("com.lunarclient.websocket.cosmetic.v2.Outfit", builder.getClass().getClassLoader());
             Method newBuilder = outfitClass.getMethod("newBuilder");
             Object outfitBuilder = newBuilder.invoke(null);
 
-            // Set outfit name
             Method setName = outfitBuilder.getClass().getMethod("setName", String.class);
             setName.invoke(outfitBuilder, "Infinite Yield");
 
-            // Set favorite
             Method setFavorite = outfitBuilder.getClass().getMethod("setFavorite", boolean.class);
             setFavorite.invoke(outfitBuilder, true);
 
-            // Build outfit
             Method buildOutfit = outfitBuilder.getClass().getMethod("build");
             Object outfit = buildOutfit.invoke(outfitBuilder);
 
-            // Load OutfitTree class
-            Class<?> outfitTreeClass = Class.forName("com.lunarclient.websocket.cosmetic.v2.OutfitTree");
+            Method addOutfits = builder.getClass().getMethod("addOutfits", outfitClass);
+            addOutfits.invoke(builder, outfit);
+
+            Class<?> outfitTreeClass = resolveClass("com.lunarclient.websocket.cosmetic.v2.OutfitTree", builder.getClass().getClassLoader());
             Method newTreeBuilder = outfitTreeClass.getMethod("newBuilder");
             Object treeBuilder = newTreeBuilder.invoke(null);
 
-            // Add outfit to tree
-            Method addOutfits = treeBuilder.getClass().getMethod("addOutfits", outfitClass);
-            addOutfits.invoke(treeBuilder, outfit);
-
-            // Get outfit ID
             Method getId = outfit.getClass().getMethod("getId");
             Object outfitId = getId.invoke(outfit);
 
-            // Set default outfit ID
-            Method setDefaultOutfitId = treeBuilder.getClass().getMethod("setDefaultOutfitId", String.class);
+            Method setDefaultOutfitId = treeBuilder.getClass().getMethod("setDefaultOutfitId", outfitId.getClass());
             setDefaultOutfitId.invoke(treeBuilder, outfitId);
 
-            // Build tree
             Method buildTree = treeBuilder.getClass().getMethod("build");
             Object outfitTree = buildTree.invoke(treeBuilder);
 
-            // Set outfit tree on the builder
             Method setOutfitTree = builder.getClass().getMethod("setOutfitTree", outfitTreeClass);
             setOutfitTree.invoke(builder, outfitTree);
         } catch (Exception ignored) {
-            // Silently fail if outfit setup doesn't work
         }
     }
 
@@ -288,7 +460,6 @@ public final class LunarUnlockUtil {
             Method method = target.getClass().getMethod(methodName, boolean.class);
             method.invoke(target, value);
         } catch (Exception ignored) {
-            // Method might not exist in all versions
         }
     }
 
