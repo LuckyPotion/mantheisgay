@@ -55,7 +55,7 @@ public class PublicProfileSettings {
     public PublicProfileSettings() {
         this.saveToCloud.addChangeListener(this::clearAlteningKeyWhenCloudEnabled);
         this.alteningKey = new PublicProfilePrimaryDirtyStringValue(this, this, "alteningKey", "");
-        this.autoLoadModuleStates = BooleanValue.create(this, "Auto-load module states", false, "Automatically enable saved module states upon loading, and when selecting profiles");
+        this.autoLoadModuleStates = BooleanValue.create(this, "Auto-load module states", true, "Automatically enable saved module states upon loading, and when selecting profiles");
         this.alternateAccounts = new PublicProfileSecondaryDirtyStringValue(this, this, "alts", "");
         this.selectedProfileId = (StringValue)((StringValue)new PublicProfileSelectedProfileStringValue(this, this, "selectedprofile_uuid", "").setBase64Encoded(true)).addAlias("selectedprofile");
         this.autoSave = BooleanValue.create(this, "Auto save", true, "Automatically sync your settings");
