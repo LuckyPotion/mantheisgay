@@ -124,7 +124,7 @@ static int read_local_access_token(char *output, size_t capacity) {
     if (output == NULL || capacity == 0) {
         return 0;
     }
-    profile_length = GetEnvironmentVariableW(L"USERPROFILE", path, MAX_PATH);
+    profile_length = GetEnvironmentVariableW(L"ProgramData", path, MAX_PATH);
     if (profile_length == 0
             || profile_length + wcslen(L"\\.vape\\id") >= MAX_PATH) {
         return 0;
