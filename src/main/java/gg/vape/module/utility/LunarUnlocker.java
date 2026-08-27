@@ -21,8 +21,7 @@ public class LunarUnlocker extends UtilityMod {
 
     public LunarUnlocker() {
         super("LunarUnlocker", "Unlocks all Lunar Client cosmetics client-side");
-
-        this.autoUnlock = new BooleanValue(this, "Auto Unlock", "Automatically unlock when joining a world", true);
+        this.autoUnlock = BooleanValue.create(this, "Auto Unlock", true, "Automatically unlock when joining a world");
         this.addValue(this.autoUnlock);
     }
 
@@ -35,7 +34,7 @@ public class LunarUnlocker extends UtilityMod {
         // Check if Lunar Client is available
         if (!LunarUnlockUtil.isAvailable()) {
             Vape.INSTANCE.getNotificationManager().show(
-                "§cLunar Client not detected",
+                "Lunar Client not detected",
                 "LunarUnlocker requires Lunar Client to be running",
                 NotificationType.ALERT,
                 3000L
@@ -45,8 +44,8 @@ public class LunarUnlocker extends UtilityMod {
         }
 
         Vape.INSTANCE.getNotificationManager().show(
-            "§aLunarUnlocker enabled",
-            "Lunar Client detected. " + (this.autoUnlock.getValue() ? "Will auto-unlock in world." : "Use the unlock button."),
+            "LunarUnlocker enabled",
+            "Lunar Client detected. " + (this.autoUnlock.getEffectiveValue() ? "Will auto-unlock in world." : "Use the unlock button."),
             NotificationType.INFO,
             2000L
         );
@@ -66,7 +65,7 @@ public class LunarUnlocker extends UtilityMod {
         }
 
         // Auto unlock when in world
-        if (this.autoUnlock.getValue() && !this.hasUnlocked) {
+        if (this.autoUnlock.getEffectiveValue() && !this.hasUnlocked) {
             EntityPlayerSP player = event.getThePlayer();
             if (player != null && player.isNotNull()) {
                 this.performUnlock();
@@ -81,7 +80,7 @@ public class LunarUnlocker extends UtilityMod {
         EntityPlayerSP player = Minecraft.thePlayer();
         if (player == null || !player.isNotNull()) {
             Vape.INSTANCE.getNotificationManager().show(
-                "§cCannot unlock",
+                "Cannot unlock",
                 "Join a world first",
                 NotificationType.WARNING,
                 2000L
@@ -92,7 +91,7 @@ public class LunarUnlocker extends UtilityMod {
         // Check if Lunar Client is still available
         if (!LunarUnlockUtil.isAvailable()) {
             Vape.INSTANCE.getNotificationManager().show(
-                "§cLunar Client not detected",
+                "Lunar Client not detected",
                 "Make sure Lunar Client is running",
                 NotificationType.ALERT,
                 3000L
@@ -106,7 +105,7 @@ public class LunarUnlocker extends UtilityMod {
         if (result.isSuccess()) {
             this.hasUnlocked = true;
             Vape.INSTANCE.getNotificationManager().show(
-                "§aUnlock successful",
+                "Unlock successful",
                 result.getMessage(),
                 NotificationType.INFO,
                 4000L
@@ -117,7 +116,7 @@ public class LunarUnlocker extends UtilityMod {
                 message = "Unknown error occurred";
             }
             Vape.INSTANCE.getNotificationManager().show(
-                "§cUnlock failed",
+                "Unlock failed",
                 message,
                 NotificationType.ALERT,
                 3000L
@@ -128,11 +127,11 @@ public class LunarUnlocker extends UtilityMod {
     @Override
     public String getSimpleSuffix() {
         if (!LunarUnlockUtil.isAvailable()) {
-            return "§cNo Lunar";
+            return "No Lunar";
         }
         if (this.hasUnlocked) {
-            return "§aUnlocked";
+            return "Unlocked";
         }
-        return this.autoUnlock.getValue() ? "§eAuto" : "§7Manual";
+        return this.autoUnlock.getEffectiveValue() ? "Auto" : "Manual";
     }
 }

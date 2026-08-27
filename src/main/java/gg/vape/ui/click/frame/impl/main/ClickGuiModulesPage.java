@@ -219,24 +219,30 @@ extends ClickGuiPageBase {
             }
             int n = 0;
             for (Mod mod : arrayList) {
-                if (bl) {
-                    ClickGuiLegitModuleCardComponent clickGuiLegitModuleCardComponent = new ClickGuiLegitModuleCardComponent((HudModule)mod);
-                    clickGuiLegitModuleCardComponent.o(clickGuiContentPanel.A() / 3.0);
-                    clickGuiLegitModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$15(clickGuiLegitModuleCardComponent));
-                    clickGuiContentPanel.h(clickGuiLegitModuleCardComponent, n % 3 == 2 ? "wrap" : "widthwrap");
-                    ++n;
-                    continue;
+                try {
+                    if (bl) {
+                        ClickGuiLegitModuleCardComponent clickGuiLegitModuleCardComponent = new ClickGuiLegitModuleCardComponent((HudModule)mod);
+                        clickGuiLegitModuleCardComponent.o(clickGuiContentPanel.A() / 3.0);
+                        clickGuiLegitModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$15(clickGuiLegitModuleCardComponent));
+                        clickGuiContentPanel.h(clickGuiLegitModuleCardComponent, n % 3 == 2 ? "wrap" : "widthwrap");
+                        ++n;
+                        continue;
+                    }
+                    ClickGuiModuleCardComponent clickGuiModuleCardComponent = new ClickGuiModuleCardComponent(mod);
+                    clickGuiModuleCardComponent.o(clickGuiContentPanel.A());
+                    clickGuiModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$16(clickGuiModuleCardComponent));
+                    clickGuiModuleCardComponent.setFavoriteControlVisible(bl2);
+                    clickGuiModuleCardComponent.setUnsafeBadgeEnabled(bl2);
+                    if (this.reorderingFavorites && this.selectedCategory == Category.FAVORITES) {
+                        clickGuiModuleCardComponent.setReordering(true);
+                        clickGuiModuleCardComponent.setReorderAction(this::lambda$filterModuleButtons$17);
+                    }
+                    clickGuiContentPanel.h(new PaddedComponent(0.0, 3.0, 0.0, 0.0, clickGuiModuleCardComponent), new Object[0]);
                 }
-                ClickGuiModuleCardComponent clickGuiModuleCardComponent = new ClickGuiModuleCardComponent(mod);
-                clickGuiModuleCardComponent.o(clickGuiContentPanel.A());
-                clickGuiModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$16(clickGuiModuleCardComponent));
-                clickGuiModuleCardComponent.setFavoriteControlVisible(bl2);
-                clickGuiModuleCardComponent.setUnsafeBadgeEnabled(bl2);
-                if (this.reorderingFavorites && this.selectedCategory == Category.FAVORITES) {
-                    clickGuiModuleCardComponent.setReordering(true);
-                    clickGuiModuleCardComponent.setReorderAction(this::lambda$filterModuleButtons$17);
+                catch (Throwable throwable) {
+                    Vape.debugLog("Failed to build Click GUI card for module " + mod.getName());
+                    Vape.logThrowable(throwable);
                 }
-                clickGuiContentPanel.h(new PaddedComponent(0.0, 3.0, 0.0, 0.0, clickGuiModuleCardComponent), new Object[0]);
             }
             clickGuiContentPanel.H(true);
             boolean bl4 = false;
@@ -297,24 +303,30 @@ extends ClickGuiPageBase {
         int n = 0;
         for (Mod mod : arrayList) {
             if (!bl && (this.selectedCategory != Category.FAVORITES ? mod.getCategory() != this.selectedCategory : !mod.isFavorite())) continue;
-            if (bl) {
-                ClickGuiLegitModuleCardComponent clickGuiLegitModuleCardComponent = new ClickGuiLegitModuleCardComponent((HudModule)mod);
-                clickGuiLegitModuleCardComponent.o(clickGuiContentPanel.A() / 3.0);
-                clickGuiLegitModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$15(clickGuiLegitModuleCardComponent));
-                clickGuiContentPanel.h(clickGuiLegitModuleCardComponent, n % 3 == 2 ? "wrap" : "widthwrap");
-                ++n;
-                continue;
+            try {
+                if (bl) {
+                    ClickGuiLegitModuleCardComponent clickGuiLegitModuleCardComponent = new ClickGuiLegitModuleCardComponent((HudModule)mod);
+                    clickGuiLegitModuleCardComponent.o(clickGuiContentPanel.A() / 3.0);
+                    clickGuiLegitModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$15(clickGuiLegitModuleCardComponent));
+                    clickGuiContentPanel.h(clickGuiLegitModuleCardComponent, n % 3 == 2 ? "wrap" : "widthwrap");
+                    ++n;
+                    continue;
+                }
+                ClickGuiModuleCardComponent clickGuiModuleCardComponent = new ClickGuiModuleCardComponent(mod);
+                clickGuiModuleCardComponent.o(clickGuiContentPanel.A());
+                clickGuiModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$16(clickGuiModuleCardComponent));
+                clickGuiModuleCardComponent.setFavoriteControlVisible(bl2);
+                clickGuiModuleCardComponent.setUnsafeBadgeEnabled(bl2);
+                if (this.reorderingFavorites && this.selectedCategory == Category.FAVORITES) {
+                    clickGuiModuleCardComponent.setReordering(true);
+                    clickGuiModuleCardComponent.setReorderAction(this::lambda$filterModuleButtons$17);
+                }
+                clickGuiContentPanel.h(new PaddedComponent(0.0, 3.0, 0.0, 0.0, clickGuiModuleCardComponent), new Object[0]);
             }
-            ClickGuiModuleCardComponent clickGuiModuleCardComponent = new ClickGuiModuleCardComponent(mod);
-            clickGuiModuleCardComponent.o(clickGuiContentPanel.A());
-            clickGuiModuleCardComponent.setSettingsAction(() -> this.lambda$filterModuleButtons$16(clickGuiModuleCardComponent));
-            clickGuiModuleCardComponent.setFavoriteControlVisible(bl2);
-            clickGuiModuleCardComponent.setUnsafeBadgeEnabled(bl2);
-            if (this.reorderingFavorites && this.selectedCategory == Category.FAVORITES) {
-                clickGuiModuleCardComponent.setReordering(true);
-                clickGuiModuleCardComponent.setReorderAction(this::lambda$filterModuleButtons$17);
+            catch (Throwable throwable) {
+                Vape.debugLog("Failed to build Click GUI card for module " + mod.getName());
+                Vape.logThrowable(throwable);
             }
-            clickGuiContentPanel.h(new PaddedComponent(0.0, 3.0, 0.0, 0.0, clickGuiModuleCardComponent), new Object[0]);
         }
         clickGuiContentPanel.H(true);
         boolean bl5 = false;

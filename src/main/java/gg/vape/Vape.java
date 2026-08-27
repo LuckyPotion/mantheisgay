@@ -742,11 +742,10 @@ public class Vape {
             while (!ClientSettings.framesInitialized) {
                 try {
                     Thread.sleep(10L);
-                    if (opaqueBranch != 0) return;
                 }
                 catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
                     Vape.logThrowable(interrupted);
-                    if (opaqueBranch == 0) continue;
                     break;
                 }
             }

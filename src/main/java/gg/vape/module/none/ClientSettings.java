@@ -643,59 +643,96 @@ extends Mod {
     }
 
     public static void initializeFrames() {
-        for (FrameStackManager frameStackManager : allStacks) {
-            frameStackManager.Y().clear();
+        Vape.debugLog("initializeFrames start");
+        try {
+            for (FrameStackManager frameStackManager : allStacks) {
+                frameStackManager.Y().clear();
+            }
+            allFrames.clear();
+            Vape.INSTANCE.initializeRender();
+            try {
+                ClientSettings.registerHudFrames();
+            }
+            catch (Throwable throwable) {
+                Vape.debugLog("registerHudFrames failed");
+                Vape.logThrowable(throwable);
+            }
+            ClientSettings.registerFrameSafely("ActiveModuleStackFrame", () -> new ActiveModuleStackFrame(), hudEditorStack, mainStack);
+            moduleSearchFrame = ClientSettings.registerFrameSafely("ModuleSearchFrame", ModuleSearchFrame::new, mainStack);
+            settingsSearchFrame = ClientSettings.registerFrameSafely("ClientSettingsSearchFrame", ClientSettingsSearchFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("ClientSettingsFrame", ClientSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("ClientSettingsSectionFrame", ClientSettingsSectionFrame::new, mainStack);
+            legitModuleCategoryFrame = ClientSettings.registerFrameSafely("CombatFrame", () -> new ModuleCategoryFrame(Category.COMBAT), mainStack);
+            Vape vape = Vape.INSTANCE;
+            if (vape.isFeatureDisabled()) {
+                ClientSettings.registerFrameSafely("OtherFrame", () -> new ModuleCategoryFrame(Category.OTHER), mainStack);
+            }
+            ClientSettings.registerFrameSafely("RenderFrame", () -> new ModuleCategoryFrame(Category.RENDER), mainStack);
+            ClientSettings.registerFrameSafely("UtilityFrame", () -> new ModuleCategoryFrame(Category.UTILITY), mainStack);
+            ClientSettings.registerFrameSafely("WorldFrame", () -> new ModuleCategoryFrame(Category.WORLD), mainStack);
+            ClientSettings.registerFrameSafely("InventoryFrame", () -> new ModuleCategoryFrame(Category.INVENTORY), mainStack);
+            ClientSettings.registerFrameSafely("VisibleModuleListFrame", VisibleModuleListFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("ProfilesSettingsFrame", ProfilesSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("FrameMacros", FrameMacros::new, mainStack);
+            ClientSettings.registerFrameSafely("OnlineFriendsFrame", OnlineFriendsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("QuickActionsFrame", QuickActionsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("OnlinePlayerPreviewSettingsFrame", OnlinePlayerPreviewSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("TextGuiSettingsFrame", TextGuiSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("OnlineCombatStatsSettingsFrame", OnlineCombatStatsSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("OnlineRadarSettingsFrame", OnlineRadarSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("InventoryOverlaySettingsFrame", InventoryOverlaySettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("TargetInfoSettingsFrame", TargetInfoSettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("OnlineActivitySettingsFrame", OnlineActivitySettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("EnemySettingsFrame", EnemySettingsFrame::new, mainStack);
+            ClientSettings.registerFrameSafely("HotbarSlotRuleItemPickerFrame", HotbarSlotRuleItemPickerFrame::new, hotbarRuleEditorStack);
+            Frame hotbarPicker = ClientSettings.getFrame(HotbarSlotRuleItemPickerFrame.class);
+            if (hotbarPicker instanceof HotbarSlotRuleItemPickerFrame) {
+                ClientSettings.registerFrame(((HotbarSlotRuleItemPickerFrame)hotbarPicker).getItemListFrame(), hotbarRuleEditorStack);
+            }
+            ClientSettings.registerFrameSafely("PublicProfilesFrame", PublicProfilesFrame::new, publicProfilesStack);
+            ClientSettings.registerFrameSafely("HudModuleSelectorFrame", HudModuleSelectorFrame::new, hudEditorStack);
+            Frame hudSelector = ClientSettings.getFrame(HudModuleSelectorFrame.class);
+            if (hudSelector instanceof HudModuleSelectorFrame) {
+                ClientSettings.registerFrame(((HudModuleSelectorFrame)hudSelector).getModuleListPanel(), hudEditorStack);
+            }
+            ClientSettings.registerFrameSafely("HudModuleOverviewFrame", HudModuleOverviewFrame::new, hudEditorStack);
+            Frame hudOverview = ClientSettings.getFrame(HudModuleOverviewFrame.class);
+            if (hudOverview instanceof HudModuleOverviewFrame) {
+                ClientSettings.registerFrame(((HudModuleOverviewFrame)hudOverview).getModuleList(), hudEditorStack);
+            }
+            ClientSettings.registerFrameSafely("HudEditorReturnToMainLayerFrame", HudEditorReturnToMainLayerFrame::new, hudEditorStack);
+            ClientSettings.registerFrameSafely("HudModuleConfigFrame", HudModuleConfigFrame::new, hudEditorStack);
+            ClientSettings.registerFrameSafely("SessionSpoofFrame", SessionSpoofFrame::new, sessionSpoofStack);
+            ClientSettings.registerFrameSafely("ProfileSnapshotFrame", ProfileSnapshotFrame::new, profileSnapshotStack);
+            ClientSettings.registerFrameSafely("InventoryCleanerPopupFrame", InventoryCleanerPopupFrame::new, inventoryCleanerStack);
+            ClientSettings.registerFrameSafely("InventoryFilterRuleEditorFrame", InventoryFilterRuleEditorFrame::new, inventoryCleanerStack);
+            frameSnapshot = ImmutableList.copyOf(allFrames);
+            ClientSettings.refreshModuleCategoryHeaders();
+            VisibleModuleListFrame.e();
+            Vape.debugLog("initializeFrames OK frames=" + allFrames.size());
         }
-        allFrames.clear();
-        Vape.INSTANCE.initializeRender();
-        ClientSettings.registerHudFrames();
-        ClientSettings.registerFrame((Frame)new ActiveModuleStackFrame(), hudEditorStack, mainStack);
-        moduleSearchFrame = new ModuleSearchFrame();
-        ClientSettings.registerFrame((Frame)moduleSearchFrame, mainStack);
-        settingsSearchFrame = new ClientSettingsSearchFrame();
-        ClientSettings.registerFrame((Frame)settingsSearchFrame, mainStack);
-        ClientSettings.registerFrame((Frame)new ClientSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new ClientSettingsSectionFrame(), mainStack);
-        legitModuleCategoryFrame = new ModuleCategoryFrame(Category.COMBAT);
-        ClientSettings.registerFrame((Frame)legitModuleCategoryFrame, mainStack);
-        Vape vape = Vape.INSTANCE;
-        if (vape.isFeatureDisabled()) {
-            ClientSettings.registerFrame((Frame)new ModuleCategoryFrame(Category.OTHER), mainStack);
+        catch (Throwable throwable) {
+            Vape.debugLog("initializeFrames failed");
+            Vape.logThrowable(throwable);
         }
-        ClientSettings.registerFrame((Frame)new ModuleCategoryFrame(Category.RENDER), mainStack);
-        ClientSettings.registerFrame((Frame)new ModuleCategoryFrame(Category.UTILITY), mainStack);
-        ClientSettings.registerFrame((Frame)new ModuleCategoryFrame(Category.WORLD), mainStack);
-        ClientSettings.registerFrame((Frame)new ModuleCategoryFrame(Category.INVENTORY), mainStack);
-        ClientSettings.registerFrame((Frame)new VisibleModuleListFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new ProfilesSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new FrameMacros(), mainStack);
-        ClientSettings.registerFrame((Frame)new OnlineFriendsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new QuickActionsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new OnlinePlayerPreviewSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new TextGuiSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new OnlineCombatStatsSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new OnlineRadarSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new InventoryOverlaySettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new TargetInfoSettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new OnlineActivitySettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new EnemySettingsFrame(), mainStack);
-        ClientSettings.registerFrame((Frame)new HotbarSlotRuleItemPickerFrame(), hotbarRuleEditorStack);
-        ClientSettings.registerFrame((Frame)ClientSettings.getFrame(HotbarSlotRuleItemPickerFrame.class).getItemListFrame(), hotbarRuleEditorStack);
-        ClientSettings.registerFrame((Frame)new PublicProfilesFrame(), publicProfilesStack);
-        ClientSettings.registerFrame((Frame)new HudModuleSelectorFrame(), hudEditorStack);
-        ClientSettings.registerFrame((Frame)ClientSettings.getFrame(HudModuleSelectorFrame.class).getModuleListPanel(), hudEditorStack);
-        ClientSettings.registerFrame((Frame)new HudModuleOverviewFrame(), hudEditorStack);
-        ClientSettings.registerFrame((Frame)ClientSettings.getFrame(HudModuleOverviewFrame.class).getModuleList(), hudEditorStack);
-        ClientSettings.registerFrame((Frame)new HudEditorReturnToMainLayerFrame(), hudEditorStack);
-        ClientSettings.registerFrame((Frame)new HudModuleConfigFrame(), hudEditorStack);
-        ClientSettings.registerFrame((Frame)new SessionSpoofFrame(), sessionSpoofStack);
-        ClientSettings.registerFrame((Frame)new ProfileSnapshotFrame(), profileSnapshotStack);
-        ClientSettings.registerFrame((Frame)new InventoryCleanerPopupFrame(), inventoryCleanerStack);
-        ClientSettings.registerFrame((Frame)new InventoryFilterRuleEditorFrame(), inventoryCleanerStack);
-        frameSnapshot = ImmutableList.copyOf(allFrames);
-        ClientSettings.refreshModuleCategoryHeaders();
-        VisibleModuleListFrame.e();
-        framesInitialized = true;
+        finally {
+            framesInitialized = true;
+        }
+    }
+
+    private static <T extends Frame> T registerFrameSafely(String name, java.util.function.Supplier<T> factory, FrameStackManager ... stacks) {
+        try {
+            T frame = factory.get();
+            if (frame != null) {
+                ClientSettings.registerFrame(frame, stacks);
+            }
+            return frame;
+        }
+        catch (Throwable throwable) {
+            Vape.debugLog("Failed to register GUI frame " + name);
+            Vape.logThrowable(throwable);
+            return null;
+        }
     }
 
     @EventHandler
@@ -722,8 +759,14 @@ extends Mod {
                 frame.H(true);
             }
         }
-        ClientSettings.getFrame(ModuleSearchFrame.class).p();
-        ClientSettings.getFrame(HudEditorReturnToMainLayerFrame.class).centerAtTop();
+        ModuleSearchFrame searchFrame = ClientSettings.getFrame(ModuleSearchFrame.class);
+        if (searchFrame != null) {
+            searchFrame.p();
+        }
+        HudEditorReturnToMainLayerFrame hudEditorReturnFrame = ClientSettings.getFrame(HudEditorReturnToMainLayerFrame.class);
+        if (hudEditorReturnFrame != null) {
+            hudEditorReturnFrame.centerAtTop();
+        }
     }
 
     @Deprecated

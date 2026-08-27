@@ -67,11 +67,19 @@ extends FrameStackManager {
     @Override
     public void A() {
         if (this.mainFrame == null) {
-            this.mainFrame = new ClickGuiMainFrame();
-            this.q(this.mainFrame);
-            this.overlaySelector = new HudOverlaySelectorFrame();
-            this.q(this.overlaySelector);
-            this.showLayer(ClickGuiLayer.MAIN);
+            try {
+                this.mainFrame = new ClickGuiMainFrame();
+                this.q(this.mainFrame);
+                this.overlaySelector = new HudOverlaySelectorFrame();
+                this.q(this.overlaySelector);
+                this.showLayer(ClickGuiLayer.MAIN);
+            }
+            catch (Throwable throwable) {
+                this.mainFrame = null;
+                Vape.debugLog("Failed to initialize Click GUI main frame");
+                Vape.logThrowable(throwable);
+                return;
+            }
         }
         if (this.overlaySelector.V$src$Z$1xhop3l()) {
             this.clearMainLayerHudFrames();

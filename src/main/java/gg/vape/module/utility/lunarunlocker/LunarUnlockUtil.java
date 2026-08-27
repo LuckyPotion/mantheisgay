@@ -75,10 +75,15 @@ public final class LunarUnlockUtil {
     }
 
     public static boolean isAvailable() {
-        if (lunarRuntime == null) {
-            lunarRuntime = checkLunarRuntime();
+        try {
+            if (lunarRuntime == null) {
+                lunarRuntime = checkLunarRuntime();
+            }
+            return Boolean.TRUE.equals(lunarRuntime);
+        } catch (Throwable ignored) {
+            lunarRuntime = Boolean.FALSE;
+            return false;
         }
-        return lunarRuntime;
     }
 
     private static boolean checkLunarRuntime() {
@@ -87,7 +92,7 @@ public final class LunarUnlockUtil {
             try {
                 Class.forName("com.lunarclient.bukkitapi.LunarClientAPI", false, loader);
                 return true;
-            } catch (ClassNotFoundException ignored) {
+            } catch (Throwable ignored) {
             }
         }
         return false;

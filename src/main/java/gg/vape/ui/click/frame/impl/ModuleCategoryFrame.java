@@ -41,9 +41,15 @@ implements CollapsibleFrame {
         Collections.sort(arrayList, new NameComparator());
         for (Mod mod : arrayList) {
             if (!mod.getCategory().equals(this.Hp) || mod.getModuleDisplayScope() == ModuleDisplayScope.STANDALONE_ONLY) continue;
-            ModuleComponent moduleComponent = new ModuleComponent(this, mod);
-            this.h(moduleComponent, new Object[0]);
-            moduleComponent.buildValueComponents();
+            try {
+                ModuleComponent moduleComponent = new ModuleComponent(this, mod);
+                this.h(moduleComponent, new Object[0]);
+                moduleComponent.buildValueComponents();
+            }
+            catch (Throwable throwable) {
+                Vape.debugLog("Failed to build GUI component for module " + mod.getName());
+                Vape.logThrowable(throwable);
+            }
         }
     }
 
