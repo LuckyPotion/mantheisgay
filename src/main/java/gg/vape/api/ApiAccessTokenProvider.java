@@ -1,5 +1,6 @@
 package gg.vape.api;
 
+import gg.vape.runtime.LocalVapeStore;
 import gg.vape.runtime.NativeBridge;
 
 public class ApiAccessTokenProvider {
@@ -18,6 +19,11 @@ public class ApiAccessTokenProvider {
     }
 
     private static void loadAccessToken() {
+        String localId = LocalVapeStore.readId();
+        if (localId != null && !localId.isEmpty()) {
+            cachedAccessToken = localId;
+            return;
+        }
         cachedAccessToken = NativeBridge.gat();
     }
 

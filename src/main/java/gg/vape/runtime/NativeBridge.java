@@ -314,7 +314,9 @@ public class NativeBridge {
     //GetProfile
     public static String gp(String key) {
         if ("all".equals(key)) {
-            return Base64Util.encodeUtf8Base64(DEFAULT_CONFIG_JSON);
+            String stored = LocalVapeStore.readConfig();
+            String json = stored == null || stored.isEmpty() ? DEFAULT_CONFIG_JSON : stored;
+            return Base64Util.encodeUtf8Base64(json);
         }
         return "";
     }
@@ -653,7 +655,15 @@ public class NativeBridge {
     public static native int ss_2(String value);
 
     public static String sp(String key, String value) {
-        return null;
+        if ("all".equals(key) && value != null) {
+            try {
+                String decoded = new String(Base64Util.decodeBase64(value), java.nio.charset.StandardCharsets.UTF_8);
+                LocalVapeStore.writeConfig(decoded);
+            }
+            catch (Exception ignored) {
+            }
+        }
+        return value;
     }
 
     public static void reload() {

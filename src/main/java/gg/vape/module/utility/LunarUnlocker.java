@@ -26,6 +26,11 @@ public class LunarUnlocker extends UtilityMod {
     }
 
     @Override
+    public boolean isRequiresBind() {
+        return false;
+    }
+
+    @Override
     public void onEnable() {
         super.onEnable();
         this.hasUnlocked = false;

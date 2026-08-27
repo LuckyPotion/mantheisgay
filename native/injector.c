@@ -14,6 +14,7 @@
 #define MAX_CANDIDATES 256
 #define WINDOW_TITLE_CAPACITY 256
 #define REFRESH_INTERVAL_MS 750
+#define ID_CAPACITY 512
 
 typedef struct process_candidate {
     DWORD process_id;
@@ -405,10 +406,157 @@ cleanup:
     return result;
 }
 
+static int get_vape_dir(wchar_t *output, DWORD capacity) {
+    DWORD length = GetEnvironmentVariableW(L"USERPROFILE", output, capacity);
+    if (length == 0 || length >= capacity) {
+        return 0;
+    }
+    if ((size_t)length + wcslen(L"\\.vape") + 1 > capacity) {
+        return 0;
+    }
+    wcscat(output, L"\\.vape");
+    return 1;
+}
+
+static int get_id_path(wchar_t *output, DWORD capacity) {
+    if (!get_vape_dir(output, capacity)) {
+        return 0;
+    }
+    if (wcslen(output) + wcslen(L"\\id") + 1 > capacity) {
+        return 0;
+    }
+    wcscat(output, L"\\id");
+    return 1;
+}
+
+static int ensure_vape_dir(void) {
+    wchar_t path[MAX_PATH];
+    if (!get_vape_dir(path, MAX_PATH)) {
+        return 0;
+    }
+    if (CreateDirectoryW(path, NULL) || GetLastError() == ERROR_ALREADY_EXISTS) {
+        return 1;
+    }
+    return 0;
+}
+
+static int trim_wide(wchar_t *value) {
+    size_t length;
+    size_t start = 0;
+    if (value == NULL) {
+        return 0;
+    }
+    length = wcslen(value);
+    while (length > 0 && (value[length - 1] == L'\n' || value[length - 1] == L'\r'
+            || value[length - 1] == L' ' || value[length - 1] == L'\t')) {
+        value[--length] = L'\0';
+    }
+    while (start < length && (value[start] == L' ' || value[start] == L'\t')) {
+        ++start;
+    }
+    if (start > 0) {
+        wmemmove(value, value + start, length - start + 1);
+    }
+    return value[0] != L'\0';
+}
+
+static int load_saved_id(wchar_t *output, size_t capacity) {
+    wchar_t path[MAX_PATH];
+    HANDLE file;
+    char utf8[ID_CAPACITY];
+    DWORD read_bytes = 0;
+    int wide_length;
+    if (output == NULL || capacity == 0 || !get_id_path(path, MAX_PATH)) {
+        return 0;
+    }
+    file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    memset(utf8, 0, sizeof(utf8));
+    if (!ReadFile(file, utf8, (DWORD)(sizeof(utf8) - 1), &read_bytes, NULL)) {
+        CloseHandle(file);
+        return 0;
+    }
+    CloseHandle(file);
+    while (read_bytes > 0 && (utf8[read_bytes - 1] == '\n'
+            || utf8[read_bytes - 1] == '\r' || utf8[read_bytes - 1] == ' '
+            || utf8[read_bytes - 1] == '\t')) {
+        utf8[--read_bytes] = '\0';
+    }
+    if (read_bytes == 0) {
+        return 0;
+    }
+    wide_length = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, output, (int)capacity);
+    return wide_length > 1;
+}
+
+static int save_id(const wchar_t *id) {
+    wchar_t path[MAX_PATH];
+    HANDLE file;
+    char utf8[ID_CAPACITY * 3];
+    int utf8_length;
+    DWORD written = 0;
+    if (id == NULL || !ensure_vape_dir() || !get_id_path(path, MAX_PATH)) {
+        return 0;
+    }
+    utf8_length = WideCharToMultiByte(CP_UTF8, 0, id, -1, utf8,
+            (int)sizeof(utf8), NULL, NULL);
+    if (utf8_length <= 1) {
+        return 0;
+    }
+    file = CreateFileW(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    if (!WriteFile(file, utf8, (DWORD)(utf8_length - 1), &written, NULL)
+            || written != (DWORD)(utf8_length - 1)) {
+        CloseHandle(file);
+        return 0;
+    }
+    CloseHandle(file);
+    return 1;
+}
+
+static int prompt_id(wchar_t *output, size_t capacity) {
+    wchar_t saved[ID_CAPACITY];
+    wchar_t input[ID_CAPACITY];
+    int has_saved = load_saved_id(saved, ID_CAPACITY);
+    wprintf(L"Enter ID");
+    if (has_saved) {
+        wprintf(L" [%ls]", saved);
+    }
+    wprintf(L": ");
+    fflush(stdout);
+    if (fgetws(input, ID_CAPACITY, stdin) == NULL) {
+        if (!has_saved) {
+            return 0;
+        }
+        wcsncpy(output, saved, capacity - 1);
+        output[capacity - 1] = L'\0';
+        return 1;
+    }
+    if (!trim_wide(input)) {
+        if (!has_saved) {
+            fwprintf(stderr, L"ID is required.\n");
+            return 0;
+        }
+        wcsncpy(output, saved, capacity - 1);
+        output[capacity - 1] = L'\0';
+        return 1;
+    }
+    wcsncpy(output, input, capacity - 1);
+    output[capacity - 1] = L'\0';
+    return 1;
+}
+
 static void usage(const wchar_t *program) {
     fwprintf(stderr,
             L"Usage: %ls [Vape421Native.dll]\n"
             L"       %ls <minecraft-pid> <Vape421Native.dll>\n"
+            L"Prompts for an ID first and saves it to %%USERPROFILE%%\\.vape\\id.\n"
             L"Without a PID, an automatically refreshing Java window selector is shown.\n"
             L"The injected DLL loads and starts the Java product automatically.\n",
             program, program);
@@ -416,6 +564,7 @@ static void usage(const wchar_t *program) {
 
 int wmain(int argc, wchar_t **argv) {
     wchar_t dll_path[MAX_PATH];
+    wchar_t user_id[ID_CAPACITY];
     wchar_t *end = NULL;
     unsigned long process_id = 0;
     if (argc < 1 || argc > 3) {
@@ -442,6 +591,14 @@ int wmain(int argc, wchar_t **argv) {
         usage(argv[0]);
         return 2;
     }
+    if (!prompt_id(user_id, ID_CAPACITY)) {
+        return 2;
+    }
+    if (!save_id(user_id)) {
+        fwprintf(stderr, L"Failed to save ID to %%USERPROFILE%%\\.vape\\id\n");
+        return 2;
+    }
+    wprintf(L"Saved ID to %%USERPROFILE%%\\.vape\\id\n");
     if (argc != 3) {
         process_id = (unsigned long)select_process(dll_path);
         if (process_id == 0) {

@@ -205,11 +205,7 @@ public class SyncThread {
 
     public void loadConfig() {
         try {
-            if (this.vape.getAccountInfo().hasProfilesEnabled()) {
-                this.loadRemoteConfig();
-            } else {
-                this.loadStandaloneConfig();
-            }
+            this.loadStandaloneConfig();
         }
         catch (Throwable ignored) {
         }

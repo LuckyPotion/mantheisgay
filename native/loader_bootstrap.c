@@ -115,6 +115,40 @@ static int connect_controller(uint16_t port) {
     return 1;
 }
 
+static int read_local_access_token(char *output, size_t capacity) {
+    wchar_t path[MAX_PATH];
+    DWORD profile_length;
+    HANDLE file;
+    DWORD read_bytes = 0;
+    size_t length;
+    if (output == NULL || capacity == 0) {
+        return 0;
+    }
+    profile_length = GetEnvironmentVariableW(L"USERPROFILE", path, MAX_PATH);
+    if (profile_length == 0
+            || profile_length + wcslen(L"\\.vape\\id") >= MAX_PATH) {
+        return 0;
+    }
+    wcscat(path, L"\\.vape\\id");
+    file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+    memset(output, 0, capacity);
+    if (!ReadFile(file, output, (DWORD)(capacity - 1), &read_bytes, NULL)) {
+        CloseHandle(file);
+        return 0;
+    }
+    CloseHandle(file);
+    length = strlen(output);
+    while (length > 0 && (output[length - 1] == '\n' || output[length - 1] == '\r'
+            || output[length - 1] == ' ' || output[length - 1] == '\t')) {
+        output[--length] = '\0';
+    }
+    return length > 0;
+}
+
 static int request_access_token(void) {
     if (g_controller_socket == INVALID_SOCKET
             || !send_line(g_controller_socket, "617")
@@ -145,7 +179,9 @@ static BOOL CALLBACK initialize_bootstrap(
     mapping = OpenFileMappingW(FILE_MAP_READ | FILE_MAP_WRITE, FALSE, name);
     if (mapping == NULL) {
         if (GetLastError() == ERROR_FILE_NOT_FOUND) {
-            strcpy_s(g_access_token, sizeof(g_access_token), "0");
+            if (!read_local_access_token(g_access_token, sizeof(g_access_token))) {
+                strcpy_s(g_access_token, sizeof(g_access_token), "0");
+            }
             state = VAPE421_TOKEN_STANDALONE;
         }
         InterlockedExchange(&g_token_state, state);
