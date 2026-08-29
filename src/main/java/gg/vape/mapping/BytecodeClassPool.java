@@ -1,6 +1,7 @@
 package gg.vape.mapping;
 
 import gg.vape.mapping.MappingClassBytecodeResolver;
+import gg.vape.mapping.runtime.RuntimeNameMappingRegistry;
 import javassist.ByteArrayClassPath;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -50,6 +51,19 @@ extends ClassPool {
         while (className.endsWith("[]")) {
             className = className.substring(0, className.length() - 2);
         }
+
+        // Try to remap the class name from deobfuscated to obfuscated
+        String remappedClassName = RuntimeNameMappingRegistry.remapClassName(className);
+        if (remappedClassName != null && !remappedClassName.equals(className)) {
+            // Try with remapped (obfuscated) name first
+            byte[] byArray = this.W.y(remappedClassName);
+            if (byArray != null) {
+                this.insertClassPath(new ByteArrayClassPath(className, byArray));
+                return true;
+            }
+        }
+
+        // Fall back to original name
         byte[] byArray = this.W.y(className);
         if (byArray != null) {
             this.insertClassPath(new ByteArrayClassPath(className, byArray));
