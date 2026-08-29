@@ -368,6 +368,17 @@ implements MappingTask {
         e = new BytecodeClassPool(V);
         a = new HashSet<Class>();
         m = 0;
+        try {
+            ClassLoader mcClassLoader = Thread.currentThread().getContextClassLoader();
+            if (mcClassLoader != null) {
+                e.insertClassPath(new LoaderClassPath(mcClassLoader));
+            }
+            ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
+            if (systemClassLoader != null && systemClassLoader != mcClassLoader) {
+                e.insertClassPath(new LoaderClassPath(systemClassLoader));
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     public <T> T J(MappingTaskCallable<T> mappingTaskCallable) {
