@@ -52,6 +52,11 @@ extends MappingTaskSet {
         }
         this.D.add(new MinecraftTickEventMappingTask());
         this.D.add(new EntityRendererEventMappingTask());
+        if (ForgeVersion.MC_26_2.d()) {
+            // 26.2 may replace the render target while the client is running;
+            // refresh Vapes owned framebuffer before each command submission.
+            this.D.add(new ThreadBoundCallbackMappingTask());
+        }
         if (ForgeVersion.MC_1_21_4.d()) {
             this.D.add(new RenderTickEventMappingTask());
         }
