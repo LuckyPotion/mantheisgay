@@ -13,6 +13,7 @@ static SRWLOCK g_capture_lock = SRWLOCK_INIT;
 static jclass g_capture_class = NULL;
 static unsigned char *g_capture_bytes = NULL;
 static jint g_capture_length = 0;
+static int g_capture_class_name_matched = 0;
 typedef struct PersistedClassDefinition {
     jclass target;
     unsigned char *bytes;
@@ -114,12 +115,172 @@ static int supply_hook_bytes(jvmtiEnv *jvmti_env,
     return 1;
 }
 
+static uint16_t read_u16(const unsigned char *bytes, jint length,
+        jint *offset) {
+    uint16_t value;
+    if (bytes == NULL || offset == NULL || *offset < 0
+            || *offset > length - 2) {
+        return 0;
+    }
+    value = (uint16_t)(((uint16_t)bytes[*offset] << 8)
+            | (uint16_t)bytes[*offset + 1]);
+    *offset += 2;
+    return value;
+}
+
+/*
+ * LaunchClassLoader/OptiFine can expose more than one ClassFileLoadHook stage
+ * during retransformation.  The first stage may still use the obfuscated
+ * this_class (for example avp), even though the Class object being rebuilt is
+ * net.minecraft.client.gui.Gui.  Select a matching class-file identity and
+ * never let a later pre-transform stage overwrite it.
+ */
+static int class_data_matches_target(jclass target,
+        const unsigned char *bytes, jint length) {
+    jint offset = 0;
+    uint16_t constant_pool_count;
+    uint16_t this_class;
+    uint16_t *class_name_indices = NULL;
+    const unsigned char **utf8_bytes = NULL;
+    uint16_t *utf8_lengths = NULL;
+    char *signature = NULL;
+    const unsigned char *class_name;
+    uint16_t class_name_length;
+    uint16_t name_index;
+    uint16_t entry_index;
+    jvmtiError signature_error;
+    int result = 0;
+
+    if (g_jvmti == NULL || target == NULL || bytes == NULL || length < 10
+            || bytes[0] != 0xCA || bytes[1] != 0xFE
+            || bytes[2] != 0xBA || bytes[3] != 0xBE) {
+        return 0;
+    }
+    offset = 8;
+    constant_pool_count = read_u16(bytes, length, &offset);
+    if (constant_pool_count < 2) {
+        return 0;
+    }
+    class_name_indices = (uint16_t *)calloc(constant_pool_count,
+            sizeof(*class_name_indices));
+    utf8_bytes = (const unsigned char **)calloc(constant_pool_count,
+            sizeof(*utf8_bytes));
+    utf8_lengths = (uint16_t *)calloc(constant_pool_count,
+            sizeof(*utf8_lengths));
+    if (class_name_indices == NULL || utf8_bytes == NULL
+            || utf8_lengths == NULL) {
+        goto cleanup;
+    }
+    for (entry_index = 1; entry_index < constant_pool_count; ++entry_index) {
+        unsigned char tag;
+        if (offset >= length) {
+            goto cleanup;
+        }
+        tag = bytes[offset++];
+        switch (tag) {
+            case 1: {
+                uint16_t utf8_length = read_u16(bytes, length, &offset);
+                if (offset > length - (jint)utf8_length) {
+                    goto cleanup;
+                }
+                utf8_bytes[entry_index] = bytes + offset;
+                utf8_lengths[entry_index] = utf8_length;
+                offset += utf8_length;
+                break;
+            }
+            case 3:
+            case 4:
+                if (offset > length - 4) goto cleanup;
+                offset += 4;
+                break;
+            case 5:
+            case 6:
+                if (offset > length - 8) goto cleanup;
+                offset += 8;
+                ++entry_index;
+                break;
+            case 7:
+                class_name_indices[entry_index] = read_u16(bytes, length, &offset);
+                break;
+            case 8:
+            case 16:
+            case 19:
+            case 20:
+                if (offset > length - 2) goto cleanup;
+                offset += 2;
+                break;
+            case 9:
+            case 10:
+            case 11:
+            case 12:
+            case 17:
+            case 18:
+                if (offset > length - 4) goto cleanup;
+                offset += 4;
+                break;
+            case 15:
+                if (offset > length - 3) goto cleanup;
+                offset += 3;
+                break;
+            default:
+                goto cleanup;
+        }
+    }
+    if (offset > length - 6) {
+        goto cleanup;
+    }
+    (void)read_u16(bytes, length, &offset); /* access_flags */
+    this_class = read_u16(bytes, length, &offset);
+    if (this_class == 0 || this_class >= constant_pool_count) {
+        goto cleanup;
+    }
+    name_index = class_name_indices[this_class];
+    if (name_index == 0 || name_index >= constant_pool_count
+            || utf8_bytes[name_index] == NULL) {
+        goto cleanup;
+    }
+    class_name = utf8_bytes[name_index];
+    class_name_length = utf8_lengths[name_index];
+
+    signature_error = (*g_jvmti)->GetClassSignature(g_jvmti, target,
+            &signature, NULL);
+    if (signature_error != JVMTI_ERROR_NONE || signature == NULL
+            || signature[0] != 'L') {
+        goto cleanup;
+    }
+    {
+        size_t signature_length = strlen(signature);
+        size_t expected_length = signature_length > 1
+                && signature[signature_length - 1] == ';'
+                ? signature_length - 2 : signature_length - 1;
+        if (expected_length == class_name_length
+                && memcmp(class_name, signature + 1, expected_length) == 0) {
+            result = 1;
+        }
+    }
+
+cleanup:
+    if (signature != NULL) {
+        (*g_jvmti)->Deallocate(g_jvmti, (unsigned char *)signature);
+    }
+    free(class_name_indices);
+    free(utf8_bytes);
+    free(utf8_lengths);
+    return result;
+}
+
 static void capture_class_bytes(JNIEnv *env, jclass target,
         const unsigned char *bytes, jint length) {
     unsigned char *copy;
+    int class_name_matched;
     if (env == NULL || target == NULL || g_capture_class == NULL
             || bytes == NULL || length <= 0
             || !(*env)->IsSameObject(env, target, g_capture_class)) {
+        return;
+    }
+    class_name_matched = class_data_matches_target(target, bytes, length);
+    if (g_capture_bytes != NULL && g_capture_class_name_matched
+            && !class_name_matched) {
         return;
     }
     copy = (unsigned char *)HeapAlloc(
@@ -133,6 +294,7 @@ static void capture_class_bytes(JNIEnv *env, jclass target,
     }
     g_capture_bytes = copy;
     g_capture_length = length;
+    g_capture_class_name_matched = class_name_matched;
 }
 
 static void update_persisted_class(JNIEnv *env, jclass target,
@@ -533,6 +695,7 @@ static jbyteArray JNICALL native_gcb(JNIEnv *env, jclass bridge, jclass target) 
         g_capture_bytes = NULL;
     }
     g_capture_length = 0;
+    g_capture_class_name_matched = 0;
     g_capture_class = (jclass)(*env)->NewGlobalRef(env, target);
     if (g_capture_class == NULL) {
         ReleaseSRWLockExclusive(&g_capture_lock);
@@ -559,6 +722,7 @@ static jbyteArray JNICALL native_gcb(JNIEnv *env, jclass bridge, jclass target) 
         g_capture_bytes = NULL;
     }
     g_capture_length = 0;
+    g_capture_class_name_matched = 0;
     ReleaseSRWLockExclusive(&g_capture_lock);
     return result;
 }
